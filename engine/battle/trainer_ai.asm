@@ -23,8 +23,7 @@ PrepareState:
     ld [stateStatus], a
 
     ret
-    """,
-    """
+
 ; Call PPO model to get move probabilities
 CallPPOModel:
     call PrepareState
@@ -35,8 +34,7 @@ CallPPOModel:
     ld hl, stateMoveProbabilities
     ; Now hl points to the move probabilities
     ret
-    """,
-    """
+
 ; Calculate cumulative probabilities
 CalculateCumulativeProbabilities:
     ld hl, stateMoveProbabilities
@@ -59,8 +57,7 @@ CalculateCumulativeProbabilities:
     ld [cumulativeProb4], a
 
     ret
-    """,
-    """
+
 ; Select a move based on the probabilities
 SelectMoveBasedOnProbabilities:
     ; Generate a random number
@@ -112,8 +109,7 @@ SelectMoveBasedOnProbabilities:
     ld a, [hl]
     ld [selectedMove], a
     ret
-    """,
-    """
+
 ; Define storage for cumulative probabilities and selected move
 cumulativeProb1:   db 0
 cumulativeProb2:   db 0
@@ -121,8 +117,7 @@ cumulativeProb3:   db 0
 cumulativeProb4:   db 0
 selectedMove:      db 0
 randomNumber:      db 0
-    """,
-    """
+
 ; This is a placeholder function that represents the PPO model
 ; In a real implementation, this would call the PPO model and write the probabilities to moveProbabilities
 PPOModelFunction:
@@ -137,8 +132,7 @@ PPOModelFunction:
     inc hl
     ld [hl], a
     ret
-    """,
-    """
+
 ; Define storage for rewards and learning rate
 reward:       db 0
 learningRate: db 1  ; Example learning rate (0.01 scaled to 1 for simplicity)
@@ -159,8 +153,7 @@ CalculateReward:
     ld a, 100  ; Reward value for defeating enemy
     ld [reward], a
     ret
-    """,
-    """
+
 ; Update the move probabilities based on the reward
 UpdatePolicy:
     ld hl, stateMoveProbabilities
@@ -189,8 +182,7 @@ UpdatePolicy:
     call NormalizeProbabilities
 
     ret
-    """,
-    """
+
 ; Multiply values in a and c, store result in de
 Multiply:
     xor d
@@ -206,8 +198,7 @@ Multiply:
     dec b
     jr nz, .mul_loop
     ret
-    """,
-    """
+
 ; Normalize probabilities to ensure they sum to 100
 NormalizeProbabilities:
     ld hl, stateMoveProbabilities ; Point HL to the start of the probabilities array
@@ -236,8 +227,7 @@ NormalizeProbabilities:
     jr nz, .loop_normalize        ; Repeat until C is zero
 
     ret                           ; Return from the subroutine
-    """,
-    """
+
 ; Divide value in A by value in E, store result in A
 DivideByE:
     ld b, 0                      ; Clear register B which will count the quotient
@@ -251,8 +241,7 @@ DivideByE:
     add a, e                     ; Correct A by adding back E (because the last subtraction was not valid)
     ld a, b                      ; Load the quotient back into A
     ret                          ; Return from the subroutine
-    """,
-    """
+
 ; Define storage for state representation and move probabilities
 stateEnemyHP:               ds 1
 stateTypeEffectiveness:     ds 1
@@ -261,8 +250,7 @@ stateMovePower:             ds 1
 stateMoves:                 ds NUM_MOVES * MOVE_LENGTH
 stateStatus:                ds 1
 stateMoveProbabilities:     ds NUM_MOVES
-    """,
-    """
+
 AIEnemyTrainerChooseMoves:
     call CallPPOModel
     ; Assume that the probabilities from the PPO model are stored in stateMoveProbabilities
