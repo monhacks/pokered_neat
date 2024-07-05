@@ -136,20 +136,6 @@ ExecuteMoveAndGetReward:
 
     ret
 
-; Multiply function: a = a * b (result stored in hl)
-MultiplyAB:
-    ld h, 0
-    ld l, 0
-    ld c, a
-MultiplyLoop:
-    add hl, hl
-    jr nc, SkipAdd
-    add hl, bc
-SkipAdd:
-    sra c
-    jr nz, MultiplyLoop
-    ret
-
 ; Call the battle system to execute the move
 ExecuteMove:
     ; Load the selected move number into the appropriate register or memory location
