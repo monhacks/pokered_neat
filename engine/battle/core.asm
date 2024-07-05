@@ -1,4 +1,4 @@
-SECTION "Reinforcement Learning", ROM0
+SECTION "Reinforcement Learning", ROMX
 
 ; Q-table stored in RAM
 Q_TABLE: DS 16 ; 4 states * 4 actions
