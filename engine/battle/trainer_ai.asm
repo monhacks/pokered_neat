@@ -252,24 +252,10 @@ stateStatus:                ds 1
 stateMoveProbabilities:     ds NUM_MOVES
 
 AIEnemyTrainerChooseMoves:
-    call CallPPOModel
-    ; Assume that the probabilities from the PPO model are stored in stateMoveProbabilities
-    ld hl, wBuffer ; init temporary move selection array
-
-    ; Use the probabilities to select moves
-    call SelectMoveBasedOnProbabilities
-    ld a, [selectedMove]
-    ld [hli], a   ; move 1
-    call SelectMoveBasedOnProbabilities
-    ld a, [selectedMove]
-    ld [hli], a   ; move 2
-    call SelectMoveBasedOnProbabilities
-    ld a, [selectedMove]
-    ld [hli], a   ; move 3
-    call SelectMoveBasedOnProbabilities
-    ld a, [selectedMove]
-    ld [hl], a    ; move 4
-
+    ld hl, wEnemyMonMoves
+    ld de, wBuffer
+    ld bc, NUM_MOVES
+    call CopyData  ; Simply copy the enemy's moves to the buffer
     ret
 
 
