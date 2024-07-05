@@ -35,12 +35,6 @@ TrainerAI:
     ld a, [hli]
     ld h, [hl]
     ld l, a
-    call Random
-    call AIEnemyTrainerChooseMoves
-
-    ; Calculate reward and update policy after the move is executed
-    call CalculateReward
-    call UpdatePolicy
 
     ret
 
