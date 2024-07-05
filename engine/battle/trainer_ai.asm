@@ -1,15 +1,15 @@
 ; Prepare the state representation
 PrepareState:
     ; Load current HP of the enemy Pokémon
-    ld a, (wEnemyMonHP + 1)
+    ld a, [wEnemyMonHP + 1]
     ld [stateEnemyHP], a
 
     ; Load type effectiveness, move type, and move power
-    ld a, (wTypeEffectiveness)
+    ld a, [wTypeEffectiveness]
     ld [stateTypeEffectiveness], a
-    ld a, (wEnemyMoveType)
+    ld a, [wEnemyMoveType]
     ld [stateMoveType], a
-    ld a, (wEnemyMovePower)
+    ld a, [wEnemyMovePower]
     ld [stateMovePower], a
 
     ; Load available moves and their properties
@@ -19,7 +19,7 @@ PrepareState:
     call CopyData
 
     ; Load status conditions
-    ld a, (wBattleMonStatus)
+    ld a, [wBattleMonStatus]
     ld [stateStatus], a
 
     ret
@@ -145,7 +145,7 @@ learningRate: db 1  ; Example learning rate (0.01 scaled to 1 for simplicity)
 ; Calculate reward based on the outcome of the battle
 CalculateReward:
     ; Check if the enemy Pokémon is defeated
-    ld a, (wEnemyMonHP + 1)
+    ld a, [wEnemyMonHP + 1]
     cp 0
     jr z, .enemyDefeated
 
