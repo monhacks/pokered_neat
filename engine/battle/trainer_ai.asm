@@ -1,3 +1,29 @@
+; Prepare the state representation
+PrepareState:
+    ; Load current HP of the enemy Pokémon
+    ld a, [wEnemyMonHP + 1]
+    ld [stateEnemyHP], a
+
+    ; Load type effectiveness, move type, and move power
+    ld a, [wTypeEffectiveness]
+    ld [stateTypeEffectiveness], a
+    ld a, [wEnemyMoveType]
+    ld [stateMoveType], a
+    ld a, [wEnemyMovePower]
+    ld [stateMovePower], a
+
+    ; Load available moves and their properties
+    ld hl, wEnemyMonMoves
+    ld de, stateMoves
+    ld bc, NUM_MOVES * MOVE_LENGTH
+    call CopyData
+
+    ; Load status conditions
+    ld a, [wBattleMonStatus]
+    ld [stateStatus], a
+
+    ret
+
 CopyData:
     ld a, (hl)        ; Load value from (hl) into a
     ld (de), a        ; Store value from a into (de)
@@ -19,8 +45,27 @@ CallPPOModel:
     ld hl, stateMoveProbabilities
     ret
 
+CalculateCumulativeProbabilities:
+    ld hl, stateMoveProbabilities
+    ld a, (hl)
+    inc hl
+    ld [cumulativeProb1], a
+    ld b, (hl)
+    add a, b
+    ld [cumulativeProb2], a
+    inc hl
+    ld b, (hl)
+    add a, b
+    ld [cumulativeProb3], a
+    inc hl
+    ld b, (hl)
+    add a, b
+    ld [cumulativeProb4], a
+    ret
+
 ; Select a move based on the probabilities
 SelectMoveBasedOnProbabilities:
+    ; Generate a random number
     call Random
     ld [randomNumber], a
 
@@ -135,8 +180,8 @@ UpdatePolicy:
     ld a, [learningRate]
     call Multiply ; result in de
     ld a, d
-    add a, [hl]
-    ld [hl], a
+    add a, (hl)
+    ld (hl), a
 
     ; Normalize probabilities
     call NormalizeProbabilities
