@@ -47,20 +47,20 @@ CallPPOModel:
 
 CalculateCumulativeProbabilities:
     ld hl, stateMoveProbabilities
-    ld a, (hl)
+    ld a, [hl]
     inc hl
-    ld (cumulativeProb1), a
-    ld b, (hl)
+    ld [cumulativeProb1], a
+    ld b, [hl]
     add a, b
-    ld (cumulativeProb2), a
+    ld [cumulativeProb2], a
     inc hl
-    ld b, (hl)
+    ld b, [hl]
     add a, b
-    ld (cumulativeProb3), a
+    ld [cumulativeProb3], a
     inc hl
-    ld b, (hl)
+    ld b, [hl]
     add a, b
-    ld (cumulativeProb4), a
+    ld [cumulativeProb4], a
     ret
 
 ; Select a move based on the probabilities
