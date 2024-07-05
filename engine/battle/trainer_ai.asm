@@ -25,14 +25,14 @@ PrepareState:
     ret
 
 CopyData:
-    ld a, (hl)        ; Load value from (hl) into a
-    ld (de), a        ; Store value from a into (de)
-    inc hl            ; Increment hl
-    inc de            ; Increment de
-    dec bc            ; Decrement bc
+    ld a, [de] ; Load value from [de] into a
+    ld [hl], a ; Store value from a into [hl]
+    inc hl ; Increment hl
+    inc de ; Increment de
+    dec bc ; Decrement bc
     ld a, b
-    or c              ; Check if bc is zero
-    jr nz, CopyData   ; If not zero, continue copying
+    or c ; Check if bc is zero
+    jr nz, CopyData ; If not zero, continue copying
     ret
 
 ; CallPPOModel with interrupt protection
