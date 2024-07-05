@@ -1,7 +1,7 @@
 ; Constants for state representation
-HIGH_HP_STATE:      EQU 0
-MEDIUM_HP_STATE:    EQU 1
-LOW_HP_STATE:       EQU 2
+HIGH_HP_STATE      = 0
+MEDIUM_HP_STATE    = 1
+LOW_HP_STATE       = 2
 
 ; Memory locations for RL variables
 wCurrentState:      ds 1  ; Byte to store current state
@@ -116,7 +116,7 @@ ExecuteMoveAndGetReward:
 
     ; Get move effectiveness
     ld hl, TypeEffectivenessTable
-    ld a, [wCurrentState]  ; Assuming state represents type match-up for simplicity
+    ld e, [wCurrentState]  ; Assuming state represents type match-up for simplicity
     add hl, de
     ld a, [hl]
     ld [wMoveEffectiveness], a
@@ -127,10 +127,24 @@ ExecuteMoveAndGetReward:
     ld a, [wMoveDamage]
     ld b, a
     ld a, [wMoveEffectiveness]
-    FMUL ; multiply a * b and store in hl
+    call MultiplyAB ; multiply a * b and store in hl
     ld a, l
     ld [wReward], a
 
+    ret
+
+; Multiply function: a = a * b (result stored in hl)
+MultiplyAB:
+    ld h, 0
+    ld l, 0
+    ld c, a
+MultiplyLoop:
+    add hl, hl
+    jr nc, SkipAdd
+    add hl, bc
+SkipAdd:
+    sra c
+    jr nz, MultiplyLoop
     ret
 
 ExecuteAction:
