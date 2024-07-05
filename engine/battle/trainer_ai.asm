@@ -471,7 +471,7 @@ AIUseFullRestore:
 	ld de, wHPBarOldHP
 	ld hl, wEnemyMonHP + 1
 	ld a, [hld]
-	ld [d]), a
+	ld [de]), a
 	inc de
 	ld a, [hl]
 	ld [de], a
@@ -551,7 +551,7 @@ AIPrintItemUseAndUpdateHPBar:
 	call AIPrintItemUse_
 	hlcoord 2, 2
 	xor a
-	ldn [wHPBarType], a
+	ld [wHPBarType], a
 	predef UpdateHPBar2
 	jp DecrementAICount
 
