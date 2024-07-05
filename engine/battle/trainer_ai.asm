@@ -24,7 +24,6 @@ PrepareState:
 
     ret
 
-; CopyData function
 CopyData:
     ld a, (de)        ; Load value from (de) into a
     ld (hl), a        ; Store value from a into (hl)
