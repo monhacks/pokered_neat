@@ -67,7 +67,7 @@ CalculateCumulativeProbabilities:
 SelectMoveBasedOnProbabilities:
     ; Generate a random number
     call Random
-    ld (randomNumber), a
+    ld [randomNumber], a
 
     call CalculateCumulativeProbabilities
 
@@ -89,22 +89,22 @@ SelectMoveBasedOnProbabilities:
     ld hl, wEnemyMonMoves
     ld de, MOVE_LENGTH * 3
     add hl, de
-    ld a, (hl)
-    ld (selectedMove), a
+    ld a, [hl]
+    ld [selectedMove], a
     ret
 
 .selectMove1:
     ld hl, wEnemyMonMoves
     ld a, (hl)
-    ld (selectedMove), a
+    ld [selectedMove], a
     ret
 
 .selectMove2:
     ld hl, wEnemyMonMoves
     ld de, MOVE_LENGTH
     add hl, de
-    ld a, (hl)
-    ld (selectedMove), a
+    ld a, [hl]
+    ld [selectedMove], a
     ret
 
 .selectMove3:
