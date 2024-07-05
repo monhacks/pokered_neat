@@ -29,7 +29,7 @@ ChooseAction:
     JR C, .Explore
     ; Exploit: choose best action
     LD HL, Q_TABLE
-    LD DE, [HL]
+    LD DE, Q_TABLE
     LD B, 4 ; Number of actions
     XOR A
     LD C, A
