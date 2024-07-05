@@ -35,27 +35,21 @@ CallPPOModel:
     ; Now hl points to the move probabilities
     ret
 
-; Calculate cumulative probabilities
 CalculateCumulativeProbabilities:
     ld hl, stateMoveProbabilities
-    ld a, [hl]
+    ld a, [hl+]
     ld [cumulativeProb1], a
-    inc hl
-    ld a, [hl]
-    ld a, [cumulativeProb1]
+    ld b, [hl]
     add a, b
     ld [cumulativeProb2], a
     inc hl
-    ld a, [hl]
-    ld a, [cumulativeProb2]
+    ld b, [hl]
     add a, b
     ld [cumulativeProb3], a
     inc hl
-    ld a, [hl]
-    ld a, [cumulativeProb3]
+    ld b, [hl]
     add a, b
     ld [cumulativeProb4], a
-
     ret
 
 ; Select a move based on the probabilities
@@ -70,15 +64,15 @@ SelectMoveBasedOnProbabilities:
     ld a, [randomNumber]
     ld b, a
     ld a, [cumulativeProb1]
-    cp a
-    jr c, .selectMove1
+    cp b
+    jr nc, .selectMove1
     ld a, [cumulativeProb2]
-    cp a
-    jr c, .selectMove2
+    cp b
+    jr nc, .selectMove2
     ld a, [cumulativeProb3]
-    cp a
-    jr c, .selectMove3
-    ; If not less than cumulativeProb3, select move 4
+    cp b
+    jr nc, .selectMove3
+    ; If not less than or equal to cumulativeProb3, select move 4
 
 .selectMove4:
     ld hl, wEnemyMonMoves
@@ -252,10 +246,24 @@ stateStatus:                ds 1
 stateMoveProbabilities:     ds NUM_MOVES
 
 AIEnemyTrainerChooseMoves:
-    ld hl, wEnemyMonMoves
-    ld de, wBuffer
-    ld bc, NUM_MOVES
-    call CopyData  ; Simply copy the enemy's moves to the buffer
+    call CallPPOModel
+    ; Assume that the probabilities from the PPO model are stored in stateMoveProbabilities
+    ld hl, wBuffer ; init temporary move selection array
+
+    ; Use the probabilities to select moves
+    call SelectMoveBasedOnProbabilities
+    ld a, [selectedMove]
+    ld [hli], a   ; move 1
+    call SelectMoveBasedOnProbabilities
+    ld a, [selectedMove]
+    ld [hli], a   ; move 2
+    call SelectMoveBasedOnProbabilities
+    ld a, [selectedMove]
+    ld [hli], a   ; move 3
+    call SelectMoveBasedOnProbabilities
+    ld a, [selectedMove]
+    ld [hl], a    ; move 4
+
     ret
 
 
