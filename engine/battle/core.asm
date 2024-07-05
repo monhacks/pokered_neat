@@ -4,9 +4,9 @@ SECTION "Reinforcement Learning", ROM0
 Q_TABLE: DS 16 ; 4 states * 4 actions
 
 ; Parameters
-DEF ALPHA: 0.1
-DEF GAMMA: 0.9
-DEF EPSILON: 0.1
+DEF ALPHA 0.1
+DEF GAMMA 0.9
+DEF EPSILON 0.1
 
 ; Function to initialize Q-table to zeros
 InitQTable:
