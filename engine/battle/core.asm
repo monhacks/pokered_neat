@@ -90,7 +90,7 @@ UpdateQValue:
     ; HL now points to Q(nextState, 0)
     
     ; Find max(Q(nextState, a'))
-    LD DE, HL
+    LD DE, [HL]
     LD B, 4 ; Number of actions
     XOR A
     LD C, A ; Max Q-value found
