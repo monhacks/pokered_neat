@@ -1,208 +1,3 @@
-; Constants for state representation
-DEF HIGH_HP_STATE      = 0
-DEF MEDIUM_HP_STATE    = 1
-DEF LOW_HP_STATE       = 2
-
-; Memory locations for RL variables
-wCurrentState:      ds 1  ; Byte to store current state
-wCurrentAction:     ds 1  ; Byte to store current action
-wReward:            ds 1  ; Byte to store reward
-
-QTable: ds 64  ; Q-table (8 states x 8 actions)
-
-InitializeQTable:
-    ld hl, QTable
-    ld de, QTable + 1
-    ld bc, 63
-    xor a
-    ld [hl], a
-    ldir_loop:
-        ld [de], a
-        inc de
-        dec bc
-        ld a, b
-        or c
-        jr nz, ldir_loop
-    ret
-
-GetState:
-    ; Simplified example of getting state (health levels only for demonstration)
-    ld a, [wEnemyMonHP]
-    cp 10
-    jr c, .LowHP
-    cp 50
-    jr c, .MediumHP
-    ld a, HIGH_HP_STATE
-    jr .SetState
-.LowHP:
-    ld a, LOW_HP_STATE
-    jr .SetState
-.MediumHP:
-    ld a, MEDIUM_HP_STATE
-.SetState:
-    ld [wCurrentState], a
-    ret
-
-ChooseAction:
-    ; Epsilon-greedy action selection
-    call Random
-    cp $20 ; 32 out of 256 chance (12.5%) to explore
-    jr c, .Explore
-    ; Exploit: choose best action from Q-table
-    ld a, [wCurrentState]
-    ld e, a
-    ld hl, QTable
-    add hl, de
-    add hl, de
-    add hl, de
-    ; Find max Q-value and corresponding action
-    ld b, 4
-    xor a
-    ld c, a
-    ld d, a
-.FindMaxQ:
-    ld a, [hl]
-    cp d
-    jr nc, .Next
-    ld d, a
-    ld c, b
-.Next:
-    inc hl
-    dec b
-    jr nz, .FindMaxQ
-    ld a, c
-    ld [wCurrentAction], a
-    ret
-.Explore:
-    ; Choose random action
-    call Random
-    and 3
-    ld [wCurrentAction], a
-    ret
-
-; Define move power and effectiveness data (these should be part of your existing game data)
-MovesPowerTable:
-    db 40, 50, 60, 70  ; Example power values for four moves
-
-MoveTypeTable:
-    db 1, 2, 3, 4      ; Example type IDs for four moves
-
-TypeEffectivenessTable:
-    db 1, 1, 2, 1    ; Example effectiveness values: 1 (normal), 0.5 (not effective), 2 (super effective), etc.
-
-wEnemyMoveNum:       ds 1  ; Variable to store the selected move number
-wMovePower:          ds 1  ; Variable to store the move power
-wMoveEffectiveness:  ds 1  ; Variable to store the move effectiveness
-wMoveDamage:         ds 1  ; Variable to store the damage dealt
-
-; Function to simulate executing a move and getting the reward
-ExecuteMoveAndGetReward:
-    ; Load the selected move number from wCurrentAction
-    ld a, [wCurrentAction]
-    ld [wEnemyMoveNum], a
-
-    ; Get the move power
-    ld hl, MovesPowerTable
-    ld e, a
-    add hl, de
-    ld a, [hl]
-    ld [wMovePower], a
-
-    ; Simulate move execution (simplified example)
-    ; Calculate damage (power / 2 for simplicity)
-    ld a, [wMovePower]
-    sra a
-    ld [wMoveDamage], a
-
-    ; Get move effectiveness
-    ld hl, TypeEffectivenessTable
-    ld a, [wCurrentState]  ; Assuming state represents type match-up for simplicity
-    add hl, de
-    ld a, [hl]
-    ld [wMoveEffectiveness], a
-
-    ; Calculate the reward
-    ; Reward is higher for more effective moves and higher damage
-    ; For simplicity: reward = damage * effectiveness
-    ld a, [wMoveDamage]
-    ld b, a
-    ld a, [wMoveEffectiveness]
-    call MultiplyAB ; multiply a * b and store in hl
-    ld a, l
-    ld [wReward], a
-
-    ; Trigger the actual move execution
-    call ExecuteMove  ; Call the existing battle system function to execute the move
-
-    ret
-
-; Call the battle system to execute the move
-ExecuteMove:
-    ; Load the selected move number into the appropriate register or memory location
-    ld a, [wEnemyMoveNum]
-    ld [wBattleMoveNum], a
-
-    ; Call the existing function to execute the move
-    call BattleExecMove  ; This function should handle the move animation and damage calculation
-
-    ret
-
-; Memory locations related to battle system
-wBattleMoveNum:      ds 1  ; Variable to store the move number for the battle system
-
-; Multiply function: a = a * b (result stored in hl)
-MultiplyAB:
-    ld h, 0
-    ld l, 0
-    ld c, a
-MultiplyLoop:
-    add hl, hl
-    jr nc, SkipAdd
-    add hl, bc
-SkipAdd:
-    sra c
-    jr nz, MultiplyLoop
-    ret
-
-ExecuteAction:
-    ; Execute the move (assume some function executes the move and calculates the reward)
-    call ExecuteMoveAndGetReward
-    ld [wReward], a
-    ret
-
-UpdateQValue:
-    ld a, [wCurrentState]
-    ld e, a
-    ld a, [wCurrentAction]
-    ld d, a
-    ld hl, QTable
-    add hl, de
-    add hl, de
-    add hl, de
-    add hl, de
-    ; Load current Q-value
-    ld a, [hl]
-    ld b, a
-    ; Load reward
-    ld a, [wReward]
-    ld c, a
-    ; Q(s, a) = Q(s, a) + alpha * (reward - Q(s, a))
-    sub b
-    sra a
-    sra a
-    sra a
-    add a, b
-    ld [hl], a
-    ret
-
-
-MainLoop:
-    call GetState
-    call ChooseAction
-    call ExecuteAction
-    call UpdateQValue
-    ret
-
 ; creates a set of moves that may be used and returns its address in hl
 ; unused slots are filled with 0, all used slots may be chosen with equal probability
 AIEnemyTrainerChooseMoves:
@@ -493,39 +288,36 @@ INCLUDE "data/trainers/special_moves.asm"
 INCLUDE "data/trainers/parties.asm"
 
 TrainerAI:
-    and a
-    ld a, [wIsInBattle]
-    dec a
-    ret z ; if not a trainer, we're done here
-    ld a, [wLinkState]
-    cp LINK_STATE_BATTLING
-    ret z ; if in a link battle, we're done as well
-    ld a, [wTrainerClass] ; what trainer class is this?
-    dec a
-    ld c, a
-    ld b, 0
-    ld hl, TrainerAIPointers
-    add hl, bc
-    add hl, bc
-    add hl, bc
-    ld a, [wAICount]
-    and a
-    ret z ; if no AI uses left, we're done here
-    inc hl
-    inc a
-    jr nz, .getpointer
-    dec hl
-    ld a, [hli]
-    ld [wAICount], a
+	and a
+	ld a, [wIsInBattle]
+	dec a
+	ret z ; if not a trainer, we're done here
+	ld a, [wLinkState]
+	cp LINK_STATE_BATTLING
+	ret z ; if in a link battle, we're done as well
+	ld a, [wTrainerClass] ; what trainer class is this?
+	dec a
+	ld c, a
+	ld b, 0
+	ld hl, TrainerAIPointers
+	add hl, bc
+	add hl, bc
+	add hl, bc
+	ld a, [wAICount]
+	and a
+	ret z ; if no AI uses left, we're done here
+	inc hl
+	inc a
+	jr nz, .getpointer
+	dec hl
+	ld a, [hli]
+	ld [wAICount], a
 .getpointer
-    ld a, [hli]
-    ld h, [hl]
-    ld l, a
-    call Random
-    jp hl
-    ; Call the main loop for the RL model
-    call MainLoop
-    ret
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
+	call Random
+	jp hl
 
 INCLUDE "data/trainers/ai_pointers.asm"
 
