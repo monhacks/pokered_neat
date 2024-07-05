@@ -301,7 +301,7 @@ TrainerAI:
     add hl, bc
     add hl, bc
     add hl, bc
-    ld a, (wAICount)
+    ld a, [wAICount]
     and a
     ret z ; if no AI uses left, we're done here
     inc hl
