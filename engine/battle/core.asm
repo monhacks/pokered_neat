@@ -68,43 +68,62 @@ UpdateQValue:
     
     ; Calculate the address of Q(s, a)
     LD HL, Q_TABLE
-    LD E, L
-    LD D, H
     ADD HL, BC
     
     ; Load current Q-value
     LD A, [HL]
-    LD L, A
+    LD E, A
     INC HL
     LD A, [HL]
-    LD H, A
+    LD D, A
 
     ; Compute reward + gamma * max(Q(s', a'))
     LD A, [Reward]
-    LD E, A
-    LD A, [NextState]
     LD L, A
-    LD H, 0
-    ADD HL, HL
-    ADD HL, HL
-    ADD HL, Q_TABLE ; Calculate the address of max(Q(s', a'))
-    LD A, [HL]      ; Load max(Q(s', a'))
+
+    ; Calculate max(Q(s', a')) address
+    LD A, [NextState]
+    LD B, A
+    LD C, 0
+    LD HL, Q_TABLE
+    ADD HL, BC
+    ; HL now points to Q(nextState, 0)
+    
+    ; Find max(Q(nextState, a'))
+    LD DE, HL
+    LD B, 4 ; Number of actions
+    XOR A
+    LD C, A ; Max Q-value found
+
+FindMaxQ:
+    LD A, [DE]
+    CP C
+    JR NC, SkipUpdateMax
+    LD C, A
+SkipUpdateMax:
+    INC DE
+    INC DE ; Move to the next Q-value
+    DEC B
+    JR NZ, FindMaxQ
+
+    ; Multiply max Q-value by GAMMA
+    LD A, C
     LD B, GAMMA
     LD C, 0
 MultiplyGamma:
     ADD HL, HL
     DEC B
     JR NZ, MultiplyGamma
-    
-    ; Add reward
+
+    ; Add reward to gamma * max Q-value
     ADD HL, DE
 
     ; Subtract current Q-value
-    LD A, H
-    SUB [HL]
-    LD H, A
+    LD A, D
+    SUB A, [HL]
+    LD D, A
 
-    ; Multiply by ALPHA
+    ; Multiply result by ALPHA
     LD B, ALPHA
     LD C, 0
 MultiplyAlpha:
@@ -113,7 +132,7 @@ MultiplyAlpha:
     JR NZ, MultiplyAlpha
 
     ; Update Q-value
-    LD [HL], H
+    LD [HL], D
     RET
 
 BattleCore:
