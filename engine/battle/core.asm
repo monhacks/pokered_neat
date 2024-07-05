@@ -24,7 +24,7 @@ InitQTable:
 ; Function to choose action using ε-greedy policy
 ChooseAction:
     CALL Random
-    LD A, R ; Random value in A
+    LD A, [R] ; Random value in A
     CP EPSILON
     JR C, .Explore
     ; Exploit: choose best action
@@ -41,7 +41,8 @@ ChooseAction:
     LD C, B ; Save the best action
 .NextAction
     INC DE
-    DJNZ .FindBestAction
+    DEC B
+    JR NZ, .FindBestAction
     LD A, C
     JR .Chosen
 .Explore:
