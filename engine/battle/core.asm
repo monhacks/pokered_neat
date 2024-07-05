@@ -37,7 +37,7 @@ ChooseAction:
     LD A, [DE]
     CP [HL]
     JR NC, .NextAction
-    LD HL, DE
+    LD HL, [DE]
     LD C, B ; Save the best action
 .NextAction
     INC DE
