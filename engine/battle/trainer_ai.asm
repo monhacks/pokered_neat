@@ -2,7 +2,7 @@
 PrepareState:
     ; Load current HP of the enemy Pokémon
     ld a, (wEnemyMonHP + 1)
-    ld (stateEnemyHP), a
+    ld [stateEnemyHP], a
 
     ; Load type effectiveness, move type, and move power
     ld a, (wTypeEffectiveness)
