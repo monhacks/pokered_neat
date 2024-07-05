@@ -1,144 +1,381 @@
-; Simplified AI Learning System
+QTable: ds 64  ; Q-table (8 states x 8 actions)
 
-; Define a small memory area for storing learned data
-SECTION "AI Learning Data", ROMX
-wAILearningData: ds 16 ; 16 bytes of learning data
+InitializeQTable:
+    ld hl, QTable
+    ld bc, 64
+    xor a
+    ldir
+    ret
 
-; New routine to prepare AI learning data
-PrepareAILearningData:
-    ld a, [wEnemyMonType1]
-    ld b, a
-    ld a, [wBattleMonType1]
-    ld c, a
-    call GetTypeMatchupIndex
-    ld d, a ; d now contains our 4-bit index (0-15)
-    ld hl, wAILearningData
-    ld e, 0
+GetState:
+    ; Simplified example of getting state (health levels only for demonstration)
+    ld a, [wEnemyMonHP]
+    cp 10
+    jr c, .LowHP
+    cp 50
+    jr c, .MediumHP
+    ld a, HIGH_HP_STATE
+    jr .SetState
+.LowHP:
+    ld a, LOW_HP_STATE
+    jr .SetState
+.MediumHP:
+    ld a, MEDIUM_HP_STATE
+.SetState:
+    ld [wCurrentState], a
+    ret
+
+
+ChooseAction:
+    ; Epsilon-greedy action selection
+    call Random
+    cp $20 ; 32 out of 256 chance (12.5%) to explore
+    jr c, .Explore
+    ; Exploit: choose best action from Q-table
+    ld a, [wCurrentState]
+    ld e, a
+    ld hl, QTable
     add hl, de
-    ld a, [hl]
-    ld [wAILearningValue], a ; Store learning value in a work RAM variable
-    ret
-
-; New AI selection routine
-AISelectMove:
-    ; Load current opponent and player Pokemon types
-    ld a, [wEnemyMonType1]
-    ld b, a
-    ld a, [wBattleMonType1]
-    ld c, a
-
-    ; Hash the type matchup into a 4-bit index
-    call GetTypeMatchupIndex
-    ld d, a ; d now contains our 4-bit index (0-15)
-
-    ; Load the learned data for this matchup
-    ld hl, wAILearningData
-    ld e, 0
     add hl, de
+    add hl, de
+    ; Find max Q-value and corresponding action
+    ld b, 4
+    xor a
+    ld c, a
+    ld d, a
+.FindMaxQ:
     ld a, [hl]
-    ld e, a ; e now contains our learned data
-
-    ; Use the learned data to influence move selection
-    call SelectMoveBasedOnLearning
-
-    ; After the battle, update the learning data
-    call UpdateLearningData
-
+    cp d
+    jr nc, .Next
+    ld d, a
+    ld c, b
+.Next:
+    inc hl
+    dec b
+    jr nz, .FindMaxQ
+    ld a, c
+    ld [wCurrentAction], a
+    ret
+.Explore:
+    ; Choose random action
+    call Random
+    and 3
+    ld [wCurrentAction], a
     ret
 
-GetTypeMatchupIndex:
-    ; Simplified type matchup hashing
-    ; Combine opponent type (in b) and player type (in c) into a 4-bit index
-    ld a, b
-    swap a
-    or c
-    and $0F
+ExecuteAction:
+    ; Execute the move (assume some function executes the move and calculates the reward)
+    call ExecuteMoveAndGetReward
+    ld [wReward], a
     ret
 
-; Constants for move types
-MOVE_TYPE_NORMAL   EQU 0
-MOVE_TYPE_ATTACK   EQU 1
-MOVE_TYPE_DEFENSE  EQU 2
-MOVE_TYPE_STATUS   EQU 3
-
-; SelectMoveBasedOnLearning
-; Input:
-;   e: learned data (0-255)
-; Output:
-;   a: selected move type
-SelectMoveBasedOnLearning:
-    ; Divide the learned data (0-255) into four ranges
-    ld a, e
-    cp 64
-    jr c, .chooseStatus
-    cp 128
-    jr c, .chooseDefense
-    cp 192
-    jr c, .chooseNormal
-    ; If e >= 192, choose attack
-    ld a, MOVE_TYPE_ATTACK
-    ret
-.chooseStatus:
-    ld a, MOVE_TYPE_STATUS
-    ret
-.chooseDefense:
-    ld a, MOVE_TYPE_DEFENSE
-    ret
-.chooseNormal:
-    ld a, MOVE_TYPE_NORMAL
-    ret
-
-; UpdateLearningData
-; Input:
-;   a: battle outcome (0 = loss, 1 = win)
-;   d: type matchup index (0-15)
-; Uses:
-;   hl: pointer to learning data
-;   b: temporary storage
-UpdateLearningData:
-    ; Point hl to the correct byte in wAILearningData
-    ld hl, wAILearningData
-    ld b, 0
-    ld c, d
-    add hl, bc
-
-    ; Load current learning value
-    ld b, [hl]
-
-    ; Check battle outcome
-    or a ; Is a == 0 (loss)?
-    jr z, .decreaseLearning
-
-    ; Increase learning (win)
-    ld a, b
-    add 16 ; Increase by 16 (you can adjust this value)
-    jr nc, .storeResult
-    ld a, 255 ; Cap at 255 if overflow
-    jr .storeResult
-
-.decreaseLearning:
-    ; Decrease learning (loss)
-    ld a, b
-    sub 16 ; Decrease by 16 (you can adjust this value)
-    jr nc, .storeResult
-    xor a ; Floor at 0 if underflow
-
-.storeResult:
-    ; Store updated learning value
+UpdateQValue:
+    ld a, [wCurrentState]
+    ld e, a
+    ld a, [wCurrentAction]
+    ld d, a
+    ld hl, QTable
+    add hl, de
+    add hl, de
+    add hl, de
+    add hl, d
+    ; Load current Q-value
+    ld a, [hl]
+    ld b, a
+    ; Load reward
+    ld a, [wReward]
+    ld c, a
+    ; Q(s, a) = Q(s, a) + alpha * (reward - Q(s, a))
+    sub b
+    sra a
+    sra a
+    sra a
+    add a, b
     ld [hl], a
     ret
 
-; Add this at the end of the battle
-UpdateAILearningAfterBattle:
-    ld a, [wBattleResult]
-    and a ; Check if player won (0) or lost (1)
-    ld a, 0
-    jr z, .playerWon
-    ld a, 1
-.playerWon
-    ld d, [wAITypeMatchupIndex] ; Assume we stored the index somewhere
-    call UpdateLearningData
+
+MainLoop:
+    call GetState
+    call ChooseAction
+    call ExecuteAction
+    call UpdateQValue
     ret
+
+; creates a set of moves that may be used and returns its address in hl
+; unused slots are filled with 0, all used slots may be chosen with equal probability
+AIEnemyTrainerChooseMoves:
+	ld a, $a
+	ld hl, wBuffer ; init temporary move selection array. Only the moves with the lowest numbers are chosen in the end
+	ld [hli], a   ; move 1
+	ld [hli], a   ; move 2
+	ld [hli], a   ; move 3
+	ld [hl], a    ; move 4
+	ld a, [wEnemyDisabledMove] ; forbid disabled move (if any)
+	swap a
+	and $f
+	jr z, .noMoveDisabled
+	ld hl, wBuffer
+	dec a
+	ld c, a
+	ld b, $0
+	add hl, bc    ; advance pointer to forbidden move
+	ld [hl], $50  ; forbid (highly discourage) disabled move
+.noMoveDisabled
+	ld hl, TrainerClassMoveChoiceModifications
+	ld a, [wTrainerClass]
+	ld b, a
+.loopTrainerClasses
+	dec b
+	jr z, .readTrainerClassData
+.loopTrainerClassData
+	ld a, [hli]
+	and a
+	jr nz, .loopTrainerClassData
+	jr .loopTrainerClasses
+.readTrainerClassData
+	ld a, [hl]
+	and a
+	jp z, .useOriginalMoveSet
+	push hl
+.nextMoveChoiceModification
+	pop hl
+	ld a, [hli]
+	and a
+	jr z, .loopFindMinimumEntries
+	push hl
+	ld hl, AIMoveChoiceModificationFunctionPointers
+	dec a
+	add a
+	ld c, a
+	ld b, 0
+	add hl, bc    ; skip to pointer
+	ld a, [hli]   ; read pointer into hl
+	ld h, [hl]
+	ld l, a
+	ld de, .nextMoveChoiceModification  ; set return address
+	push de
+	jp hl         ; execute modification function
+.loopFindMinimumEntries ; all entries will be decremented sequentially until one of them is zero
+	ld hl, wBuffer  ; temp move selection array
+	ld de, wEnemyMonMoves  ; enemy moves
+	ld c, NUM_MOVES
+.loopDecrementEntries
+	ld a, [de]
+	inc de
+	and a
+	jr z, .loopFindMinimumEntries
+	dec [hl]
+	jr z, .minimumEntriesFound
+	inc hl
+	dec c
+	jr z, .loopFindMinimumEntries
+	jr .loopDecrementEntries
+.minimumEntriesFound
+	ld a, c
+.loopUndoPartialIteration ; undo last (partial) loop iteration
+	inc [hl]
+	dec hl
+	inc a
+	cp NUM_MOVES + 1
+	jr nz, .loopUndoPartialIteration
+	ld hl, wBuffer  ; temp move selection array
+	ld de, wEnemyMonMoves  ; enemy moves
+	ld c, NUM_MOVES
+.filterMinimalEntries ; all minimal entries now have value 1. All other slots will be disabled (move set to 0)
+	ld a, [de]
+	and a
+	jr nz, .moveExisting
+	ld [hl], a
+.moveExisting
+	ld a, [hl]
+	dec a
+	jr z, .slotWithMinimalValue
+	xor a
+	ld [hli], a     ; disable move slot
+	jr .next
+.slotWithMinimalValue
+	ld a, [de]
+	ld [hli], a     ; enable move slot
+.next
+	inc de
+	dec c
+	jr nz, .filterMinimalEntries
+	ld hl, wBuffer    ; use created temporary array as move set
+	ret
+.useOriginalMoveSet
+	ld hl, wEnemyMonMoves    ; use original move set
+	ret
+
+AIMoveChoiceModificationFunctionPointers:
+	dw AIMoveChoiceModification1
+	dw AIMoveChoiceModification2
+	dw AIMoveChoiceModification3
+	dw AIMoveChoiceModification4 ; unused, does nothing
+
+; discourages moves that cause no damage but only a status ailment if player's mon already has one
+AIMoveChoiceModification1:
+	ld a, [wBattleMonStatus]
+	and a
+	ret z ; return if no status ailment on player's mon
+	ld hl, wBuffer - 1 ; temp move selection array (-1 byte offset)
+	ld de, wEnemyMonMoves ; enemy moves
+	ld b, NUM_MOVES + 1
+.nextMove
+	dec b
+	ret z ; processed all 4 moves
+	inc hl
+	ld a, [de]
+	and a
+	ret z ; no more moves in move set
+	inc de
+	call ReadMove
+	ld a, [wEnemyMovePower]
+	and a
+	jr nz, .nextMove
+	ld a, [wEnemyMoveEffect]
+	push hl
+	push de
+	push bc
+	ld hl, StatusAilmentMoveEffects
+	ld de, 1
+	call IsInArray
+	pop bc
+	pop de
+	pop hl
+	jr nc, .nextMove
+	ld a, [hl]
+	add $5 ; heavily discourage move
+	ld [hl], a
+	jr .nextMove
+
+StatusAilmentMoveEffects:
+	db EFFECT_01 ; unused sleep effect
+	db SLEEP_EFFECT
+	db POISON_EFFECT
+	db PARALYZE_EFFECT
+	db -1 ; end
+
+; slightly encourage moves with specific effects.
+; in particular, stat-modifying moves and other move effects
+; that fall in-between
+AIMoveChoiceModification2:
+	ld a, [wAILayer2Encouragement]
+	cp $1
+	ret nz
+	ld hl, wBuffer - 1 ; temp move selection array (-1 byte offset)
+	ld de, wEnemyMonMoves ; enemy moves
+	ld b, NUM_MOVES + 1
+.nextMove
+	dec b
+	ret z ; processed all 4 moves
+	inc hl
+	ld a, [de]
+	and a
+	ret z ; no more moves in move set
+	inc de
+	call ReadMove
+	ld a, [wEnemyMoveEffect]
+	cp ATTACK_UP1_EFFECT
+	jr c, .nextMove
+	cp BIDE_EFFECT
+	jr c, .preferMove
+	cp ATTACK_UP2_EFFECT
+	jr c, .nextMove
+	cp POISON_EFFECT
+	jr c, .preferMove
+	jr .nextMove
+.preferMove
+	dec [hl] ; slightly encourage this move
+	jr .nextMove
+
+; encourages moves that are effective against the player's mon (even if non-damaging).
+; discourage damaging moves that are ineffective or not very effective against the player's mon,
+; unless there's no damaging move that deals at least neutral damage
+AIMoveChoiceModification3:
+	ld hl, wBuffer - 1 ; temp move selection array (-1 byte offset)
+	ld de, wEnemyMonMoves ; enemy moves
+	ld b, NUM_MOVES + 1
+.nextMove
+	dec b
+	ret z ; processed all 4 moves
+	inc hl
+	ld a, [de]
+	and a
+	ret z ; no more moves in move set
+	inc de
+	call ReadMove
+	push hl
+	push bc
+	push de
+	callfar AIGetTypeEffectiveness
+	pop de
+	pop bc
+	pop hl
+	ld a, [wTypeEffectiveness]
+	cp $10
+	jr z, .nextMove
+	jr c, .notEffectiveMove
+	dec [hl] ; slightly encourage this move
+	jr .nextMove
+.notEffectiveMove ; discourages non-effective moves if better moves are available
+	push hl
+	push de
+	push bc
+	ld a, [wEnemyMoveType]
+	ld d, a
+	ld hl, wEnemyMonMoves  ; enemy moves
+	ld b, NUM_MOVES + 1
+	ld c, $0
+.loopMoves
+	dec b
+	jr z, .done
+	ld a, [hli]
+	and a
+	jr z, .done
+	call ReadMove
+	ld a, [wEnemyMoveEffect]
+	cp SUPER_FANG_EFFECT
+	jr z, .betterMoveFound ; Super Fang is considered to be a better move
+	cp SPECIAL_DAMAGE_EFFECT
+	jr z, .betterMoveFound ; any special damage moves are considered to be better moves
+	cp FLY_EFFECT
+	jr z, .betterMoveFound ; Fly is considered to be a better move
+	ld a, [wEnemyMoveType]
+	cp d
+	jr z, .loopMoves
+	ld a, [wEnemyMovePower]
+	and a
+	jr nz, .betterMoveFound ; damaging moves of a different type are considered to be better moves
+	jr .loopMoves
+.betterMoveFound
+	ld c, a
+.done
+	ld a, c
+	pop bc
+	pop de
+	pop hl
+	and a
+	jr z, .nextMove
+	inc [hl] ; slightly discourage this move
+	jr .nextMove
+AIMoveChoiceModification4:
+	ret
+
+ReadMove:
+	push hl
+	push de
+	push bc
+	dec a
+	ld hl, Moves
+	ld bc, MOVE_LENGTH
+	call AddNTimes
+	ld de, wEnemyMoveNum
+	call CopyData
+	pop bc
+	pop de
+	pop hl
+	ret
 
 INCLUDE "data/trainers/move_choices.asm"
 
@@ -154,7 +391,6 @@ INCLUDE "data/trainers/special_moves.asm"
 
 INCLUDE "data/trainers/parties.asm"
 
-; Modify the TrainerAI routine
 TrainerAI:
     and a
     ld a, [wIsInBattle]
@@ -163,10 +399,6 @@ TrainerAI:
     ld a, [wLinkState]
     cp LINK_STATE_BATTLING
     ret z ; if in a link battle, we're done as well
-
-    ; New code starts here
-    call PrepareAILearningData ; Prepare learning data for current battle
-
     ld a, [wTrainerClass] ; what trainer class is this?
     dec a
     ld c, a
@@ -190,6 +422,9 @@ TrainerAI:
     ld l, a
     call Random
     jp hl
+    ; Call the main loop for the RL model
+    call MainLoop
+    ret
 
 INCLUDE "data/trainers/ai_pointers.asm"
 
