@@ -1,4 +1,3 @@
-; CopyData function
 CopyData:
     ld a, (hl)        ; Load value from (hl) into a
     ld (de), a        ; Store value from a into (de)
