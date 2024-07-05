@@ -4,9 +4,9 @@ SECTION "Reinforcement Learning", ROM0
 Q_TABLE: DS 16 ; 4 states * 4 actions
 
 ; Parameters
-ALPHA: EQU 0.1
-GAMMA: EQU 0.9
-EPSILON: EQU 0.1
+DEF ALPHA: 0.1
+DEF GAMMA: 0.9
+DEF EPSILON: 0.1
 
 ; Function to initialize Q-table to zeros
 InitQTable:
@@ -36,7 +36,7 @@ ChooseAction:
     CALL Random
     AND 3 ; Assume 4 actions (0 to 3)
 .Chosen:
-    LD (ChosenAction), A
+    LD [ChosenAction], A
     RET
 
 ; Function to update Q-value
