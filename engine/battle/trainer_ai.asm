@@ -1,32 +1,7 @@
-; Prepare the state representation
-PrepareState:
-    ; Load current HP of the enemy Pokémon
-    ld a, [wEnemyMonHP + 1]
-    ld [stateEnemyHP], a
-
-    ; Load type effectiveness, move type, and move power
-    ld a, [wTypeEffectiveness]
-    ld [stateTypeEffectiveness], a
-    ld a, [wEnemyMoveType]
-    ld [stateMoveType], a
-    ld a, [wEnemyMovePower]
-    ld [stateMovePower], a
-
-    ; Load available moves and their properties
-    ld hl, wEnemyMonMoves
-    ld de, stateMoves
-    ld bc, NUM_MOVES * MOVE_LENGTH
-    call CopyData
-
-    ; Load status conditions
-    ld a, [wBattleMonStatus]
-    ld [stateStatus], a
-
-    ret
-
+; CopyData function
 CopyData:
-    ld a, (de)        ; Load value from (de) into a
-    ld (hl), a        ; Store value from a into (hl)
+    ld a, (hl)        ; Load value from (hl) into a
+    ld (de), a        ; Store value from a into (de)
     inc hl            ; Increment hl
     inc de            ; Increment de
     dec bc            ; Decrement bc
@@ -45,26 +20,8 @@ CallPPOModel:
     ld hl, stateMoveProbabilities
     ret
 
-CalculateCumulativeProbabilities:
-    ld hl, stateMoveProbabilities
-    ld a, [hl+]
-    ld [cumulativeProb1], a
-    ld b, [hl]
-    add a, b
-    ld [cumulativeProb2], a
-    inc hl
-    ld b, [hl]
-    add a, b
-    ld [cumulativeProb3], a
-    inc hl
-    ld b, [hl]
-    add a, b
-    ld [cumulativeProb4], a
-    ret
-
 ; Select a move based on the probabilities
 SelectMoveBasedOnProbabilities:
-    ; Generate a random number
     call Random
     ld [randomNumber], a
 
@@ -88,13 +45,13 @@ SelectMoveBasedOnProbabilities:
     ld hl, wEnemyMonMoves
     ld de, MOVE_LENGTH * 3
     add hl, de
-    ld a, [hl]
+    ld a, (hl)
     ld [selectedMove], a
     ret
 
 .selectMove1:
     ld hl, wEnemyMonMoves
-    ld a, [hl]
+    ld a, (hl)
     ld [selectedMove], a
     ret
 
@@ -102,7 +59,7 @@ SelectMoveBasedOnProbabilities:
     ld hl, wEnemyMonMoves
     ld de, MOVE_LENGTH
     add hl, de
-    ld a, [hl]
+    ld a, (hl)
     ld [selectedMove], a
     ret
 
@@ -110,7 +67,7 @@ SelectMoveBasedOnProbabilities:
     ld hl, wEnemyMonMoves
     ld de, MOVE_LENGTH * 2
     add hl, de
-    ld a, [hl]
+    ld a, (hl)
     ld [selectedMove], a
     ret
 
@@ -211,7 +168,7 @@ NormalizeProbabilities:
     ld c, NUM_MOVES               ; Load the number of moves into C
 
 .loop_sum:
-    add a, [hl]                   ; Add the value at HL to A
+    add a, (hl)                   ; Add the value at HL to A
     ld b, a                       ; Store the sum in B
     inc hl                        ; Increment HL to point to the next value
     dec c                         ; Decrement C (loop counter)
@@ -223,9 +180,9 @@ NormalizeProbabilities:
     ld c, NUM_MOVES               ; Reload the number of moves into C
 
 .loop_normalize:
-    ld a, [hl]                    ; Load the current probability into A
+    ld a, (hl)                    ; Load the current probability into A
     call DivideByE                ; Divide A by E (sum of probabilities) and store result back in A
-    ld [hl], a                    ; Store the normalized value back into the array
+    ld (hl), a                    ; Store the normalized value back into the array
     inc hl                        ; Move to the next probability
     dec c                         ; Decrement C (loop counter)
     jr nz, .loop_normalize        ; Repeat until C is zero
