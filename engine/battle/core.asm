@@ -29,16 +29,20 @@ ChooseAction:
     JR C, .Explore
     ; Exploit: choose best action
     LD HL, Q_TABLE
-    LD DE, Q_TABLE
     LD B, 4 ; Number of actions
     XOR A
     LD C, A
+    LD DE, Q_TABLE
+    LD H, 0
+    LD L, 0
 .FindBestAction
     LD A, [DE]
     CP [HL]
     JR NC, .NextAction
-    LD HL, [DE]
-    LD C, B ; Save the best action
+    ; Save DE as the best action index
+    LD L, E
+    LD H, D
+    LD C, B ; Save the best action index
 .NextAction
     INC DE
     DEC B
