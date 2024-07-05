@@ -60,16 +60,19 @@ ChooseAction:
 
 ; Function to update Q-value
 UpdateQValue:
-    ; Assume currentState, action, reward, and nextState are already defined
-    ; HL points to Q(s, a) in Q-table
-    ; D holds reward
-    ; DE holds the max Q-value of the next state
-
-    ; Load current Q-value
+    ; Load current state and action into registers
+    LD A, [currentState]
+    LD B, A
+    LD A, [ChosenAction]
+    LD C, A
+    
+    ; Calculate the address of Q(s, a)
     LD HL, Q_TABLE
-    LD B, [currentState]
-    LD C, [ChosenAction]
+    LD E, L
+    LD D, H
     ADD HL, BC
+    
+    ; Load current Q-value
     LD A, [HL]
     LD L, A
     INC HL
@@ -77,21 +80,35 @@ UpdateQValue:
     LD H, A
 
     ; Compute reward + gamma * max(Q(s', a'))
-    LD A, D
+    LD A, [Reward]
     LD E, A
-    LD A, [DE]
-    MUL A, GAMMA
-    ADD HL, A
+    LD A, [NextState]
+    LD L, A
+    LD H, 0
+    ADD HL, HL
+    ADD HL, HL
+    LD A, [Q_TABLE + HL]
+    ; Multiply by GAMMA using a simple loop
+    LD B, GAMMA
+    LD C, 0
+MultiplyGamma:
+    ADD HL, HL
+    DJNZ MultiplyGamma
+    
+    ; Add reward
+    ADD HL, DE
 
     ; Subtract current Q-value
     LD A, H
     SUB A, [HL]
     LD H, A
 
-    ; Multiply by alpha
-    LD A, H
-    MUL A, ALPHA
-    ADD HL, A
+    ; Multiply by ALPHA using a simple loop
+    LD B, ALPHA
+    LD C, 0
+MultiplyAlpha:
+    ADD HL, HL
+    DJNZ MultiplyAlpha
 
     ; Update Q-value
     LD [HL], H
