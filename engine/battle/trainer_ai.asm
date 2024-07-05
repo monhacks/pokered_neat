@@ -2,9 +2,17 @@ QTable: ds 64  ; Q-table (8 states x 8 actions)
 
 InitializeQTable:
     ld hl, QTable
-    ld bc, 64
+    ld de, QTable + 1
+    ld bc, 63
     xor a
-    ldir
+    ld (hl), a
+    ldir_loop:
+        ld (de), a
+        inc de
+        dec bc
+        ld a, b
+        or c
+        jr nz, ldir_loop
     ret
 
 GetState:
