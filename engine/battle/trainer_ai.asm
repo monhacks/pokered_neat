@@ -1,290 +1,160 @@
-; Prepare the state representation
-PrepareState:
-    ; Load current HP of the enemy Pokémon
-    ld a, [wEnemyMonHP + 1]
-    ld [stateEnemyHP], a
+; Simplified AI Learning System
 
-    ; Load type effectiveness, move type, and move power
-    ld a, [wTypeEffectiveness]
-    ld [stateTypeEffectiveness], a
-    ld a, [wEnemyMoveType]
-    ld [stateMoveType], a
-    ld a, [wEnemyMovePower]
-    ld [stateMovePower], a
+; Define a small memory area for storing learned data
+SECTION "AI Learning Data", WRAM0
+wAILearningData: ds 16 ; 16 bytes of learning data
 
-    ; Load available moves and their properties
-    ld hl, wEnemyMonMoves
-    ld de, stateMoves
-    ld bc, NUM_MOVES * MOVE_LENGTH
-    call CopyData
-
-    ; Load status conditions
-    ld a, [wBattleMonStatus]
-    ld [stateStatus], a
-
-    ret
-
-CopyData:
-    ld a, [de] ; Load value from [de] into a
-    ld [hl], a ; Store value from a into [hl]
-    inc hl ; Increment hl
-    inc de ; Increment de
-    dec bc ; Decrement bc
-    ld a, b
-    or c ; Check if bc is zero
-    jr nz, CopyData ; If not zero, continue copying
-    ret
-
-; CallPPOModel with interrupt protection
-CallPPOModel:
-    di                  ; Disable interrupts
-    call PrepareState
-    call PPOModelFunction
-    ei                  ; Enable interrupts
-
-    ld hl, stateMoveProbabilities
-    ret
-
-CalculateCumulativeProbabilities:
-    ld hl, stateMoveProbabilities
-    ld a, [hl]
-    inc hl
-    ld [cumulativeProb1], a
-    ld b, [hl]
-    add a, b
-    ld [cumulativeProb2], a
-    inc hl
-    ld b, [hl]
-    add a, b
-    ld [cumulativeProb3], a
-    inc hl
-    ld b, [hl]
-    add a, b
-    ld [cumulativeProb4], a
-    ret
-
-; Select a move based on the probabilities
-SelectMoveBasedOnProbabilities:
-    ; Generate a random number
-    call Random
-    ld [randomNumber], a
-
-    call CalculateCumulativeProbabilities
-
-    ; Compare random number with cumulative probabilities to select a move
-    ld a, [randomNumber]
+; New routine to prepare AI learning data
+PrepareAILearningData:
+    ld a, [wEnemyMonType1]
     ld b, a
-    ld a, [cumulativeProb1]
-    cp b
-    jr nc, .selectMove1
-    ld a, [cumulativeProb2]
-    cp b
-    jr nc, .selectMove2
-    ld a, [cumulativeProb3]
-    cp b
-    jr nc, .selectMove3
-    ; If not less than or equal to cumulativeProb3, select move 4
-
-.selectMove4:
-    ld hl, wEnemyMonMoves
-    ld de, MOVE_LENGTH * 3
-    add hl, de
-    ld a, [hl]
-    ld [selectedMove], a
-    ret
-
-.selectMove1:
-    ld hl, wEnemyMonMoves
-    ld a, [hl]
-    ld [selectedMove], a
-    ret
-
-.selectMove2:
-    ld hl, wEnemyMonMoves
-    ld de, MOVE_LENGTH
-    add hl, de
-    ld a, [hl]
-    ld [selectedMove], a
-    ret
-
-.selectMove3:
-    ld hl, wEnemyMonMoves
-    ld de, MOVE_LENGTH * 2
-    add hl, de
-    ld a, [hl]
-    ld [selectedMove], a
-    ret
-
-; Define storage for cumulative probabilities and selected move
-cumulativeProb1:   db 0
-cumulativeProb2:   db 0
-cumulativeProb3:   db 0
-cumulativeProb4:   db 0
-selectedMove:      db 0
-randomNumber:      db 0
-
-; This is a placeholder function that represents the PPO model
-; In a real implementation, this would call the PPO model and write the probabilities to moveProbabilities
-PPOModelFunction:
-    ; Placeholder: Just return uniform probabilities
-    ld hl, stateMoveProbabilities
-    ld a, 25
-    ld [hl], a
-    inc hl
-    ld [hl], a
-    inc hl
-    ld [hl], a
-    inc hl
-    ld [hl], a
-    ret
-
-; Define storage for rewards and learning rate
-reward:       db 0
-learningRate: db 1  ; Example learning rate (0.01 scaled to 1 for simplicity)
-
-; Calculate reward based on the outcome of the battle
-CalculateReward:
-    ; Check if the enemy Pokémon is defeated
-    ld a, [wEnemyMonHP + 1]
-    cp 0
-    jr z, .enemyDefeated
-
-    ; Neutral action reward
-    ld a, 0
-    ld [reward], a
-    ret
-
-.enemyDefeated:
-    ld a, 100  ; Reward value for defeating enemy
-    ld [reward], a
-    ret
-
-; Update the move probabilities based on the reward
-UpdatePolicy:
-    ld hl, stateMoveProbabilities
-    ld a, [selectedMove]
-    ld b, a
-
-    ; Move hl to the correct position in the probabilities array
-    ld c, b
-.loop_hl:
-    dec c
-    jr z, .adjust_probability
-    inc hl
-    jr .loop_hl
-
-.adjust_probability:
-    ; Adjust the probability for the selected move
-    ld a, [reward]
+    ld a, [wBattleMonType1]
     ld c, a
-    ld a, [learningRate]
-    call Multiply ; result in de
-    ld a, d
-    add a, [hl]
+    call GetTypeMatchupIndex
+    ld d, a ; d now contains our 4-bit index (0-15)
+    ld hl, wAILearningData
+    ld e, 0
+    add hl, de
+    ld a, [hl]
+    ld [wAILearningValue], a ; Store learning value in a work RAM variable
+    ret
+
+; New AI selection routine
+AISelectMove:
+    ; Load current opponent and player Pokemon types
+    ld a, [wEnemyMonType1]
+    ld b, a
+    ld a, [wBattleMonType1]
+    ld c, a
+
+    ; Hash the type matchup into a 4-bit index
+    call GetTypeMatchupIndex
+    ld d, a ; d now contains our 4-bit index (0-15)
+
+    ; Load the learned data for this matchup
+    ld hl, wAILearningData
+    ld e, 0
+    add hl, de
+    ld a, [hl]
+    ld e, a ; e now contains our learned data
+
+    ; Use the learned data to influence move selection
+    call SelectMoveBasedOnLearning
+
+    ; After the battle, update the learning data
+    call UpdateLearningData
+
+    ret
+
+GetTypeMatchupIndex:
+    ; Simplified type matchup hashing
+    ; Combine opponent type (in b) and player type (in c) into a 4-bit index
+    ld a, b
+    swap a
+    or c
+    and $0F
+    ret
+
+; Constants for move types
+MOVE_TYPE_NORMAL   EQU 0
+MOVE_TYPE_ATTACK   EQU 1
+MOVE_TYPE_DEFENSE  EQU 2
+MOVE_TYPE_STATUS   EQU 3
+
+; SelectMoveBasedOnLearning
+; Input:
+;   e: learned data (0-255)
+; Output:
+;   a: selected move type
+SelectMoveBasedOnLearning:
+    ; Divide the learned data (0-255) into four ranges
+    ld a, e
+    cp 64
+    jr c, .chooseStatus
+    cp 128
+    jr c, .chooseDefense
+    cp 192
+    jr c, .chooseNormal
+    ; If e >= 192, choose attack
+    ld a, MOVE_TYPE_ATTACK
+    ret
+.chooseStatus:
+    ld a, MOVE_TYPE_STATUS
+    ret
+.chooseDefense:
+    ld a, MOVE_TYPE_DEFENSE
+    ret
+.chooseNormal:
+    ld a, MOVE_TYPE_NORMAL
+    ret
+
+; UpdateLearningData
+; Input:
+;   a: battle outcome (0 = loss, 1 = win)
+;   d: type matchup index (0-15)
+; Uses:
+;   hl: pointer to learning data
+;   b: temporary storage
+UpdateLearningData:
+    ; Point hl to the correct byte in wAILearningData
+    ld hl, wAILearningData
+    ld b, 0
+    ld c, d
+    add hl, bc
+
+    ; Load current learning value
+    ld b, [hl]
+
+    ; Check battle outcome
+    or a ; Is a == 0 (loss)?
+    jr z, .decreaseLearning
+
+    ; Increase learning (win)
+    ld a, b
+    add 16 ; Increase by 16 (you can adjust this value)
+    jr nc, .storeResult
+    ld a, 255 ; Cap at 255 if overflow
+    jr .storeResult
+
+.decreaseLearning:
+    ; Decrease learning (loss)
+    ld a, b
+    sub 16 ; Decrease by 16 (you can adjust this value)
+    jr nc, .storeResult
+    xor a ; Floor at 0 if underflow
+
+.storeResult:
+    ; Store updated learning value
     ld [hl], a
-
-    ; Normalize probabilities
-    call NormalizeProbabilities
-
     ret
 
-; Multiply values in a and c, store result in de
-Multiply:
-    xor d
-    xor e
-    ld b, 8
-.mul_loop:
-    sla c
-    rl e
-    rl d
-    jr nc, .skip_add
-    add a, d
-.skip_add:
-    dec b
-    jr nz, .mul_loop
-    ret
-
-; Normalize probabilities to ensure they sum to 100
-NormalizeProbabilities:
-    ld hl, stateMoveProbabilities ; Point HL to the start of the probabilities array
-    xor a                         ; Clear the accumulator (A) to use it for summing
-    ld b, 0                       ; Clear register B which will hold the sum
-    ld c, NUM_MOVES               ; Load the number of moves into C
-
-.loop_sum:
-    add a, [hl]                   ; Add the value at HL to A
-    ld b, a                       ; Store the sum in B
-    inc hl                        ; Increment HL to point to the next value
-    dec c                         ; Decrement C (loop counter)
-    jr nz, .loop_sum              ; Repeat until C is zero
-
-    ; Normalize each probability
-    ld hl, stateMoveProbabilities ; Point HL back to the start of the probabilities array
-    ld e, b                       ; Load the sum of all probabilities into E
-    ld c, NUM_MOVES               ; Reload the number of moves into C
-
-.loop_normalize:
-    ld a, [hl]                    ; Load the current probability into A
-    call DivideByE                ; Divide A by E (sum of probabilities) and store result back in A
-    ld [hl], a                    ; Store the normalized value back into the array
-    inc hl                        ; Move to the next probability
-    dec c                         ; Decrement C (loop counter)
-    jr nz, .loop_normalize        ; Repeat until C is zero
-
-    ret                           ; Return from the subroutine
-
-; Divide value in A by value in E, store result in A
-DivideByE:
-    ld b, 0                      ; Clear register B which will count the quotient
-.div_loop:
-    sub e                        ; Subtract E from A
-    jr c, .done                  ; If the result is negative, we are done
-    inc b                        ; Otherwise, increment B (quotient)
-    jr .div_loop                 ; Repeat the loop
-
-.done:
-    add a, e                     ; Correct A by adding back E (because the last subtraction was not valid)
-    ld a, b                      ; Load the quotient back into A
-    ret                          ; Return from the subroutine
-
-; Define storage for state representation and move probabilities
-stateEnemyHP:               ds 1
-stateTypeEffectiveness:     ds 1
-stateMoveType:              ds 1
-stateMovePower:             ds 1
-stateMoves:                 ds NUM_MOVES * MOVE_LENGTH
-stateStatus:                ds 1
-stateMoveProbabilities:     ds NUM_MOVES
-
-AIEnemyTrainerChooseMoves:
-    call CallPPOModel
-    ; Assume that the probabilities from the PPO model are stored in stateMoveProbabilities
-    ld hl, wBuffer ; init temporary move selection array
-
-    ; Use the probabilities to select moves
-    call SelectMoveBasedOnProbabilities
-    ld a, [selectedMove]
-    ld [hli], a   ; move 1
-    call SelectMoveBasedOnProbabilities
-    ld a, [selectedMove]
-    ld [hli], a   ; move 2
-    call SelectMoveBasedOnProbabilities
-    ld a, [selectedMove]
-    ld [hli], a   ; move 3
-    call SelectMoveBasedOnProbabilities
-    ld a, [selectedMove]
-    ld [hl], a    ; move 4
-
+; Add this at the end of the battle
+UpdateAILearningAfterBattle:
+    ld a, [wBattleResult]
+    and a ; Check if player won (0) or lost (1)
+    ld a, 0
+    jr z, .playerWon
+    ld a, 1
+.playerWon
+    ld d, [wAITypeMatchupIndex] ; Assume we stored the index somewhere
+    call UpdateLearningData
     ret
 
 INCLUDE "data/trainers/move_choices.asm"
+
 INCLUDE "data/trainers/pic_pointers_money.asm"
+
 INCLUDE "data/trainers/names.asm"
+
 INCLUDE "engine/battle/misc.asm"
+
 INCLUDE "engine/battle/read_trainer_party.asm"
+
 INCLUDE "data/trainers/special_moves.asm"
+
 INCLUDE "data/trainers/parties.asm"
 
+; Modify the TrainerAI routine
 TrainerAI:
     and a
     ld a, [wIsInBattle]
@@ -293,7 +163,11 @@ TrainerAI:
     ld a, [wLinkState]
     cp LINK_STATE_BATTLING
     ret z ; if in a link battle, we're done as well
-    ld a, [wTrainerClass]
+
+    ; New code starts here
+    call PrepareAILearningData ; Prepare learning data for current battle
+
+    ld a, [wTrainerClass] ; what trainer class is this?
     dec a
     ld c, a
     ld b, 0
@@ -315,13 +189,7 @@ TrainerAI:
     ld h, [hl]
     ld l, a
     call Random
-    call AIEnemyTrainerChooseMoves
-
-    ; Calculate reward and update policy after the move is executed
-    call CalculateReward
-    call UpdatePolicy
-
-    ret
+    jp hl
 
 INCLUDE "data/trainers/ai_pointers.asm"
 
