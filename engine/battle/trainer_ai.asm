@@ -308,11 +308,11 @@ TrainerAI:
     inc a
     jr nz, .getpointer
     dec hl
-    ld a, (hli)
-    ld (wAICount), a
+    ld a, [hli]
+    ld [wAICount], a
 .getpointer
-    ld a, (hli)
-    ld h, (hl)
+    ld a, [hli]
+    ld h, [hl]
     ld l, a
     call Random
     call AIEnemyTrainerChooseMoves
@@ -456,7 +456,7 @@ GenericAI:
 
 DecrementAICount:
 	ld hl, wAICount
-	dec (hl)
+	dec [hl]
 	scf
 	ret
 
@@ -467,25 +467,25 @@ AIPlayRestoringSFX:
 AIUseFullRestore:
 	call AICureStatus
 	ld a, FULL_RESTORE
-	ld (wAIItem), a
+	ld [wAIItem], a
 	ld de, wHPBarOldHP
 	ld hl, wEnemyMonHP + 1
-	ld a, (hld)
-	ld (de), a
+	ld a, [hld]
+	ld [d]), a
 	inc de
-	ld a, (hl)
-	ld (de), a
+	ld a, [hl]
+	ld [de], a
 	inc de
 	ld hl, wEnemyMonMaxHP + 1
-	ld a, (hld)
-	ld (de), a
+	ld a, [hld]
+	ld [de], a
 	inc de
-	ld (wHPBarMaxHP), a
-	ld (wEnemyMonHP + 1), a
-	ld a, (hl)
-	ld (de), a
-	ld (wHPBarMaxHP+1), a
-	ld (wEnemyMonHP), a
+	ld [wHPBarMaxHP], a
+	ld [wEnemyMonHP + 1], a
+	ld a, [hl]
+	ld [de], a
+	ld [wHPBarMaxHP+1], a
+	ld [wEnemyMonHP], a
 	jr AIPrintItemUseAndUpdateHPBar
 
 AIUsePotion:
@@ -508,50 +508,50 @@ AIUseHyperPotion:
 
 AIRecoverHP:
 ; heal b HP and print "trainer used $(a) on pokemon!"
-	ld (wAIItem), a
+	ld [wAIItem], a
 	ld hl, wEnemyMonHP + 1
-	ld a, (hl)
-	ld (wHPBarOldHP), a
+	ld a, [hl]
+	ld [wHPBarOldHP], a
 	add b
-	ld (hld), a
-	ld (wHPBarNewHP), a
-	ld a, (hl)
-	ld (wHPBarOldHP+1), a
-	ld (wHPBarNewHP+1), a
+	ld [hld], a
+	ld [wHPBarNewHP], a
+	ld a, [hl]
+	ld [wHPBarOldHP+1], a
+	ld [wHPBarNewHP+1], a
 	jr nc, .next
 	inc a
-	ld (hl), a
-	ld (wHPBarNewHP+1), a
+	ld [hl], a
+	ld [wHPBarNewHP+1], a
 .next
 	inc hl
-	ld a, (hld)
+	ld a, [hld]
 	ld b, a
 	ld de, wEnemyMonMaxHP + 1
-	ld a, (de)
+	ld a, [de]
 	dec de
-	ld (wHPBarMaxHP), a
+	ld [wHPBarMaxHP], a
 	sub b
-	ld a, (hli)
+	ld a, [hli]
 	ld b, a
-	ld a, (de)
-	ld (wHPBarMaxHP+1), a
+	ld a, [de]
+	ld [wHPBarMaxHP+1], a
 	sbc b
 	jr nc, AIPrintItemUseAndUpdateHPBar
 	inc de
-	ld a, (de)
+	ld a, [de]
 	dec de
-	ld (hld), a
-	ld (wHPBarNewHP), a
-	ld a, (de)
-	ld (hl), a
-	ld (wHPBarNewHP+1), a
+	ld [hld], a
+	ld [wHPBarNewHP], a
+	ld a, [de]
+	ld [hl], a
+	ld [wHPBarNewHP+1], a
 	; fallthrough
 
 AIPrintItemUseAndUpdateHPBar:
 	call AIPrintItemUse_
 	hlcoord 2, 2
 	xor a
-	ld (wHPBarType), a
+	ldn [wHPBarType], a
 	predef UpdateHPBar2
 	jp DecrementAICount
 
@@ -565,9 +565,9 @@ AISwitchIfEnoughMons:
 
 	; count how many monsters haven't fainted yet
 .loop
-	ld a, (hli)
+	ld a, [hli]
 	ld b, a
-	ld a, (hld)
+	ld a, [hld]
 	or b
 	jr z, .Fainted ; has monster fainted?
 	inc d
@@ -605,10 +605,10 @@ SwitchEnemyMon:
 	; This wFirstMonsNotOutYet variable is abused to prevent the player from
 	; switching in a new mon in response to this switch.
 	ld a, 1
-	ld (wFirstMonsNotOutYet), a
+	ld [wFirstMonsNotOutYet], a
 	callfar EnemySendOut
 	xor a
-	ld (wFirstMonsNotOutYet), a
+	ld [wFirstMonsNotOutYet], a
 
 	ld a, (wLinkState)
 	cp LINK_STATE_BATTLING
