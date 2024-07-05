@@ -5,9 +5,9 @@ InitializeQTable:
     ld de, QTable + 1
     ld bc, 63
     xor a
-    ld (hl), a
+    ld [hl], a
     ldir_loop:
-        ld (de), a
+        ld [de], a
         inc de
         dec bc
         ld a, b
@@ -86,7 +86,7 @@ UpdateQValue:
     add hl, de
     add hl, de
     add hl, de
-    add hl, d
+    add hl, de
     ; Load current Q-value
     ld a, [hl]
     ld b, a
