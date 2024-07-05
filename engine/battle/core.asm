@@ -87,28 +87,30 @@ UpdateQValue:
     LD H, 0
     ADD HL, HL
     ADD HL, HL
-    LD A, [Q_TABLE + HL]
-    ; Multiply by GAMMA using a simple loop
+    ADD HL, Q_TABLE ; Calculate the address of max(Q(s', a'))
+    LD A, [HL]      ; Load max(Q(s', a'))
     LD B, GAMMA
     LD C, 0
 MultiplyGamma:
     ADD HL, HL
-    DJNZ MultiplyGamma
+    DEC B
+    JR NZ, MultiplyGamma
     
     ; Add reward
     ADD HL, DE
 
     ; Subtract current Q-value
     LD A, H
-    SUB A, [HL]
+    SUB [HL]
     LD H, A
 
-    ; Multiply by ALPHA using a simple loop
+    ; Multiply by ALPHA
     LD B, ALPHA
     LD C, 0
 MultiplyAlpha:
     ADD HL, HL
-    DJNZ MultiplyAlpha
+    DEC B
+    JR NZ, MultiplyAlpha
 
     ; Update Q-value
     LD [HL], H
