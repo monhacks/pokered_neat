@@ -95,7 +95,7 @@ SelectMoveBasedOnProbabilities:
 
 .selectMove1:
     ld hl, wEnemyMonMoves
-    ld a, (hl)
+    ld a, [hl]
     ld [selectedMove], a
     ret
 
@@ -111,8 +111,8 @@ SelectMoveBasedOnProbabilities:
     ld hl, wEnemyMonMoves
     ld de, MOVE_LENGTH * 2
     add hl, de
-    ld a, (hl)
-    ld (selectedMove), a
+    ld a, [hl]
+    ld [selectedMove], a
     ret
 
 ; Define storage for cumulative probabilities and selected move
@@ -129,13 +129,13 @@ PPOModelFunction:
     ; Placeholder: Just return uniform probabilities
     ld hl, stateMoveProbabilities
     ld a, 25
-    ld (hl), a
+    ld [hl], a
     inc hl
-    ld (hl), a
+    ld [hl], a
     inc hl
-    ld (hl), a
+    ld [hl], a
     inc hl
-    ld (hl), a
+    ld [hl], a
     ret
 
 ; Define storage for rewards and learning rate
@@ -151,12 +151,12 @@ CalculateReward:
 
     ; Neutral action reward
     ld a, 0
-    ld (reward), a
+    ld [reward], a
     ret
 
 .enemyDefeated:
     ld a, 100  ; Reward value for defeating enemy
-    ld (reward), a
+    ld [reward], a
     ret
 
 ; Update the move probabilities based on the reward
@@ -180,8 +180,8 @@ UpdatePolicy:
     ld a, (learningRate)
     call Multiply ; result in de
     ld a, d
-    add a, (hl)
-    ld (hl), a
+    add a, [hl]
+    ld [hl], a
 
     ; Normalize probabilities
     call NormalizeProbabilities
@@ -212,7 +212,7 @@ NormalizeProbabilities:
     ld c, NUM_MOVES               ; Load the number of moves into C
 
 .loop_sum:
-    add a, (hl)                   ; Add the value at HL to A
+    add a, [hl]                   ; Add the value at HL to A
     ld b, a                       ; Store the sum in B
     inc hl                        ; Increment HL to point to the next value
     dec c                         ; Decrement C (loop counter)
@@ -224,9 +224,9 @@ NormalizeProbabilities:
     ld c, NUM_MOVES               ; Reload the number of moves into C
 
 .loop_normalize:
-    ld a, (hl)                    ; Load the current probability into A
+    ld a, [hl]                    ; Load the current probability into A
     call DivideByE                ; Divide A by E (sum of probabilities) and store result back in A
-    ld (hl), a                    ; Store the normalized value back into the array
+    ld [hl], a                    ; Store the normalized value back into the array
     inc hl                        ; Move to the next probability
     dec c                         ; Decrement C (loop counter)
     jr nz, .loop_normalize        ; Repeat until C is zero
@@ -264,16 +264,16 @@ AIEnemyTrainerChooseMoves:
     ; Use the probabilities to select moves
     call SelectMoveBasedOnProbabilities
     ld a, (selectedMove)
-    ld (hli), a   ; move 1
+    ld [hli], a   ; move 1
     call SelectMoveBasedOnProbabilities
     ld a, (selectedMove)
-    ld (hli), a   ; move 2
+    ld [hli], a   ; move 2
     call SelectMoveBasedOnProbabilities
     ld a, (selectedMove)
-    ld (hli), a   ; move 3
+    ld [hli], a   ; move 3
     call SelectMoveBasedOnProbabilities
     ld a, (selectedMove)
-    ld (hl), a    ; move 4
+    ld [hl], a    ; move 4
 
     ret
 
