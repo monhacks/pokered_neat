@@ -1,3 +1,13 @@
+; Constants for state representation
+HIGH_HP_STATE:      equ 0
+MEDIUM_HP_STATE:    equ 1
+LOW_HP_STATE:       equ 2
+
+; Memory locations for RL variables
+wCurrentState:      ds 1  ; Byte to store current state
+wCurrentAction:     ds 1  ; Byte to store current action
+wReward:            ds 1  ; Byte to store reward
+
 QTable: ds 64  ; Q-table (8 states x 8 actions)
 
 InitializeQTable:
@@ -32,7 +42,6 @@ GetState:
 .SetState:
     ld [wCurrentState], a
     ret
-
 
 ChooseAction:
     ; Epsilon-greedy action selection
@@ -69,6 +78,59 @@ ChooseAction:
     call Random
     and 3
     ld [wCurrentAction], a
+    ret
+
+; Define move power and effectiveness data (these should be part of your existing game data)
+MovesPowerTable:
+    db 40, 50, 60, 70  ; Example power values for four moves
+
+MoveTypeTable:
+    db 1, 2, 3, 4      ; Example type IDs for four moves
+
+TypeEffectivenessTable:
+    db 1, 0.5, 2, 1    ; Example effectiveness values: 1 (normal), 0.5 (not effective), 2 (super effective), etc.
+
+wEnemyMoveNum:       ds 1  ; Variable to store the selected move number
+wMovePower:          ds 1  ; Variable to store the move power
+wMoveEffectiveness:  ds 1  ; Variable to store the move effectiveness
+wMoveDamage:         ds 1  ; Variable to store the damage dealt
+
+; Function to simulate executing a move and getting the reward
+ExecuteMoveAndGetReward:
+    ; Load the selected move number from wCurrentAction
+    ld a, [wCurrentAction]
+    ld [wEnemyMoveNum], a
+
+    ; Get the move power
+    ld hl, MovesPowerTable
+    ld e, a
+    add hl, de
+    ld a, [hl]
+    ld [wMovePower], a
+
+    ; Simulate move execution (simplified example)
+    ; Calculate damage (power / 2 for simplicity)
+    ld a, [wMovePower]
+    sra a
+    ld [wMoveDamage], a
+
+    ; Get move effectiveness
+    ld hl, TypeEffectivenessTable
+    ld e, [wCurrentState]  ; Assuming state represents type match-up for simplicity
+    add hl, de
+    ld a, [hl]
+    ld [wMoveEffectiveness], a
+
+    ; Calculate the reward
+    ; Reward is higher for more effective moves and higher damage
+    ; For simplicity: reward = damage * effectiveness
+    ld a, [wMoveDamage]
+    ld b, a
+    ld a, [wMoveEffectiveness]
+    mul ; multiply a * b and store in hl
+    ld a, l
+    ld [wReward], a
+
     ret
 
 ExecuteAction:
