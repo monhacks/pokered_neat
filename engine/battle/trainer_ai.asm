@@ -24,15 +24,26 @@ PrepareState:
 
     ret
 
-; Call PPO model to get move probabilities
-CallPPOModel:
-    call PrepareState
-    ; Call the external PPO model function
-    call PPOModelFunction
+; CopyData function
+CopyData:
+    ld a, (de)        ; Load value from (de) into a
+    ld (hl), a        ; Store value from a into (hl)
+    inc hl            ; Increment hl
+    inc de            ; Increment de
+    dec bc            ; Decrement bc
+    ld a, b
+    or c              ; Check if bc is zero
+    jr nz, CopyData   ; If not zero, continue copying
+    ret
 
-    ; Assume the model writes probabilities to a fixed location
+; CallPPOModel with interrupt protection
+CallPPOModel:
+    di                  ; Disable interrupts
+    call PrepareState
+    call PPOModelFunction
+    ei                  ; Enable interrupts
+
     ld hl, stateMoveProbabilities
-    ; Now hl points to the move probabilities
     ret
 
 CalculateCumulativeProbabilities:
@@ -265,21 +276,6 @@ AIEnemyTrainerChooseMoves:
     ld [hl], a    ; move 4
 
     ret
-
-CopyData:
-    ld a, (bc)
-    cp NUM_MOVES * MOVE_LENGTH
-    jr nc, CopyData_End ; Exit if bc exceeds bounds
-    ld (hl), (de)
-    inc hl
-    inc de
-    dec bc
-    ld a, b
-    or c
-    jr nz, CopyData
-CopyData_End:
-    ret
-
 
 INCLUDE "data/trainers/move_choices.asm"
 INCLUDE "data/trainers/pic_pointers_money.asm"
