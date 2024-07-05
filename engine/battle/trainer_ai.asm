@@ -88,7 +88,7 @@ MoveTypeTable:
     db 1, 2, 3, 4      ; Example type IDs for four moves
 
 TypeEffectivenessTable:
-    db 1, 0.5, 2, 1    ; Example effectiveness values: 1 (normal), 0.5 (not effective), 2 (super effective), etc.
+    db 1, 1, 2, 1    ; Example effectiveness values: 1 (normal), 0.5 (not effective), 2 (super effective), etc.
 
 wEnemyMoveNum:       ds 1  ; Variable to store the selected move number
 wMovePower:          ds 1  ; Variable to store the move power
@@ -131,7 +131,38 @@ ExecuteMoveAndGetReward:
     ld a, l
     ld [wReward], a
 
+    ; Trigger the actual move execution
+    call ExecuteMove  ; Call the existing battle system function to execute the move
+
     ret
+
+; Multiply function: a = a * b (result stored in hl)
+MultiplyAB:
+    ld h, 0
+    ld l, 0
+    ld c, a
+MultiplyLoop:
+    add hl, hl
+    jr nc, SkipAdd
+    add hl, bc
+SkipAdd:
+    sra c
+    jr nz, MultiplyLoop
+    ret
+
+; Call the battle system to execute the move
+ExecuteMove:
+    ; Load the selected move number into the appropriate register or memory location
+    ld a, [wEnemyMoveNum]
+    ld [wBattleMoveNum], a
+
+    ; Call the existing function to execute the move
+    call BattleExecMove  ; This function should handle the move animation and damage calculation
+
+    ret
+
+; Memory locations related to battle system
+wBattleMoveNum:      ds 1  ; Variable to store the move number for the battle system
 
 ; Multiply function: a = a * b (result stored in hl)
 MultiplyAB:
