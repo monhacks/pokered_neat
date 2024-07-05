@@ -1,3 +1,49 @@
+SECTION "Reinforcement Learning", ROM0
+
+; Q-table stored in RAM
+Q_TABLE: DS 16 ; 4 states * 4 actions
+
+; Parameters
+ALPHA: EQU 0.1
+GAMMA: EQU 0.9
+EPSILON: EQU 0.1
+
+; Function to initialize Q-table to zeros
+InitQTable:
+    LD HL, Q_TABLE
+    LD BC, 16
+    XOR A
+.InitLoop:
+    LD [HL+], A
+    DEC BC
+    LD A, B
+    OR C
+    JR NZ, .InitLoop
+    RET
+
+; Function to choose action using ε-greedy policy
+ChooseAction:
+    CALL Random
+    LD A, R ; Random value in A
+    CP EPSILON
+    JR C, .Explore
+    ; Exploit: choose best action
+    LD HL, Q_TABLE
+    ; Compute best action (omitted for brevity)
+    JR .Chosen
+.Explore:
+    ; Explore: choose random action
+    CALL Random
+    AND 3 ; Assume 4 actions (0 to 3)
+.Chosen:
+    LD (ChosenAction), A
+    RET
+
+; Function to update Q-value
+UpdateQValue:
+    ; Compute Q-value update (omitted for brevity)
+    RET
+
 BattleCore:
 
 INCLUDE "data/battle/residual_effects_1.asm"
@@ -336,7 +382,7 @@ MainInBattleLoop:
 	pop af
 	jr nz, MainInBattleLoop ; if the player didn't select a move, jump
 .selectEnemyMove
-	call SelectEnemyMove
+	call ChooseAction
 	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	jr nz, .noLinkBattle
