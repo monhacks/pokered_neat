@@ -471,7 +471,7 @@ AIUseFullRestore:
 	ld de, wHPBarOldHP
 	ld hl, wEnemyMonHP + 1
 	ld a, [hld]
-	ld [de]), a
+	ld [de], a
 	inc de
 	ld a, [hl]
 	ld [de], a
