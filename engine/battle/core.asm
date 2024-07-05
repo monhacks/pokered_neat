@@ -29,7 +29,20 @@ ChooseAction:
     JR C, .Explore
     ; Exploit: choose best action
     LD HL, Q_TABLE
-    ; Compute best action (omitted for brevity)
+    LD DE, HL
+    LD B, 4 ; Number of actions
+    XOR A
+    LD C, A
+.FindBestAction
+    LD A, [DE]
+    CP [HL]
+    JR NC, .NextAction
+    LD HL, DE
+    LD C, B ; Save the best action
+.NextAction
+    INC DE
+    DJNZ .FindBestAction
+    LD A, C
     JR .Chosen
 .Explore:
     ; Explore: choose random action
@@ -39,9 +52,44 @@ ChooseAction:
     LD [ChosenAction], A
     RET
 
+
 ; Function to update Q-value
 UpdateQValue:
-    ; Compute Q-value update (omitted for brevity)
+    ; Assume currentState, action, reward, and nextState are already defined
+    ; HL points to Q(s, a) in Q-table
+    ; D holds reward
+    ; DE holds the max Q-value of the next state
+
+    ; Load current Q-value
+    LD HL, Q_TABLE
+    LD B, [currentState]
+    LD C, [ChosenAction]
+    ADD HL, BC
+    LD A, [HL]
+    LD L, A
+    INC HL
+    LD A, [HL]
+    LD H, A
+
+    ; Compute reward + gamma * max(Q(s', a'))
+    LD A, D
+    LD E, A
+    LD A, [DE]
+    MUL A, GAMMA
+    ADD HL, A
+
+    ; Subtract current Q-value
+    LD A, H
+    SUB A, [HL]
+    LD H, A
+
+    ; Multiply by alpha
+    LD A, H
+    MUL A, ALPHA
+    ADD HL, A
+
+    ; Update Q-value
+    LD [HL], H
     RET
 
 BattleCore:
