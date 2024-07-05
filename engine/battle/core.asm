@@ -79,7 +79,7 @@ UpdateQValue:
 
     ; Compute reward + gamma * max(Q(s', a'))
     LD A, [Reward]
-    LD E, A
+    LD L, A
 
     ; Calculate max(Q(s', a')) address
     LD A, [NextState]
@@ -109,32 +109,42 @@ SkipUpdateMax:
     ; Multiply max Q-value by GAMMA
     LD A, C
     LD B, GAMMA
-    LD HL, 0
+    LD DE, 0
 MultiplyGamma:
-    ADD HL, HL
-    ADD HL, A
+    ADD HL, DE
+    ADD A, A
     DEC B
     JR NZ, MultiplyGamma
 
     ; Add reward to gamma * max Q-value
-    ADD HL, DE
+    LD A, L
+    ADD A, E
+    LD L, A
+    LD A, 0
+    ADC A, D
+    LD D, A
 
     ; Subtract current Q-value
     LD A, D
-    SUB A, [HL]
+    SUB A, E
     LD D, A
 
     ; Multiply result by ALPHA
+    LD A, D
     LD B, ALPHA
-    LD HL, 0
+    LD DE, 0
 MultiplyAlpha:
-    ADD HL, HL
-    ADD HL, D
+    ADD HL, DE
+    ADD A, A
     DEC B
     JR NZ, MultiplyAlpha
 
     ; Update Q-value
-    LD [HL], D
+    LD A, L
+    LD [HL], A
+    INC HL
+    LD A, H
+    LD [HL], A
     RET
 
 BattleCore:
