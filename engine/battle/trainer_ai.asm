@@ -72,15 +72,15 @@ SelectMoveBasedOnProbabilities:
     call CalculateCumulativeProbabilities
 
     ; Compare random number with cumulative probabilities to select a move
-    ld a, (randomNumber)
+    ld a, [randomNumber]
     ld b, a
-    ld a, (cumulativeProb1)
+    ld a, [cumulativeProb1]
     cp b
     jr nc, .selectMove1
-    ld a, (cumulativeProb2)
+    ld a, [cumulativeProb2]
     cp b
     jr nc, .selectMove2
-    ld a, (cumulativeProb3)
+    ld a, [cumulativeProb3]
     cp b
     jr nc, .selectMove3
     ; If not less than or equal to cumulativeProb3, select move 4
@@ -162,7 +162,7 @@ CalculateReward:
 ; Update the move probabilities based on the reward
 UpdatePolicy:
     ld hl, stateMoveProbabilities
-    ld a, (selectedMove)
+    ld a, [selectedMove]
     ld b, a
 
     ; Move hl to the correct position in the probabilities array
@@ -175,9 +175,9 @@ UpdatePolicy:
 
 .adjust_probability:
     ; Adjust the probability for the selected move
-    ld a, (reward)
+    ld a, [reward]
     ld c, a
-    ld a, (learningRate)
+    ld a, [learningRate]
     call Multiply ; result in de
     ld a, d
     add a, [hl]
@@ -263,16 +263,16 @@ AIEnemyTrainerChooseMoves:
 
     ; Use the probabilities to select moves
     call SelectMoveBasedOnProbabilities
-    ld a, (selectedMove)
+    ld a, [selectedMove]
     ld [hli], a   ; move 1
     call SelectMoveBasedOnProbabilities
-    ld a, (selectedMove)
+    ld a, [selectedMove]
     ld [hli], a   ; move 2
     call SelectMoveBasedOnProbabilities
-    ld a, (selectedMove)
+    ld a, [selectedMove]
     ld [hli], a   ; move 3
     call SelectMoveBasedOnProbabilities
-    ld a, (selectedMove)
+    ld a, [selectedMove]
     ld [hl], a    ; move 4
 
     ret
@@ -360,7 +360,7 @@ CooltrainerFAI:
 
 BrockAI:
 ; if his active monster has a status condition, use a full heal
-	ld a, (wEnemyMonStatus)
+	ld a, [wEnemyMonStatus]
 	and a
 	ret z
 	jp AIUseFullHeal
@@ -557,7 +557,7 @@ AIPrintItemUseAndUpdateHPBar:
 
 AISwitchIfEnoughMons:
 ; enemy trainer switches if there are 2 or more unfainted mons in party
-	ld a, (wEnemyPartyCount)
+	ld a, [wEnemyPartyCount]
 	ld c, a
 	ld hl, wEnemyMon1HP
 
@@ -589,7 +589,7 @@ SwitchEnemyMon:
 
 ; prepare to withdraw the active monster: copy hp, number, and status to roster
 
-	ld a, (wEnemyMonPartyPos)
+	ld a, [wEnemyMonPartyPos]
 	ld hl, wEnemyMon1HP
 	ld bc, wEnemyMon2 - wEnemyMon1
 	call AddNTimes
@@ -610,8 +610,137 @@ SwitchEnemyMon:
 	xor a
 	ld [wFirstMonsNotOutYet], a
 
-	ld a, (wLinkState)
+	ld a, [wLinkState]
 	cp LINK_STATE_BATTLING
 	ret z
 	scf
 	ret
+
+AIBattleWithdrawText:
+	text_far _AIBattleWithdrawText
+	text_end
+
+AIUseFullHeal:
+	call AIPlayRestoringSFX
+	call AICureStatus
+	ld a, FULL_HEAL
+	jp AIPrintItemUse
+
+AICureStatus:
+; cures the status of enemy's active pokemon
+	ld a, [wEnemyMonPartyPos]
+	ld hl, wEnemyMon1Status
+	ld bc, wEnemyMon2 - wEnemyMon1
+	call AddNTimes
+	xor a
+	ld [hl], a ; clear status in enemy team roster
+	ld [wEnemyMonStatus], a ; clear status of active enemy
+	ld hl, wEnemyBattleStatus3
+	res 0, [hl]
+	ret
+
+AIUseXAccuracy: ; unused
+	call AIPlayRestoringSFX
+	ld hl, wEnemyBattleStatus2
+	set 0, [hl]
+	ld a, X_ACCURACY
+	jp AIPrintItemUse
+
+AIUseGuardSpec:
+	call AIPlayRestoringSFX
+	ld hl, wEnemyBattleStatus2
+	set 1, [hl]
+	ld a, GUARD_SPEC
+	jp AIPrintItemUse
+
+AIUseDireHit: ; unused
+	call AIPlayRestoringSFX
+	ld hl, wEnemyBattleStatus2
+	set 2, [hl]
+	ld a, DIRE_HIT
+	jp AIPrintItemUse
+
+AICheckIfHPBelowFraction:
+; return carry if enemy trainer's current HP is below 1 / a of the maximum
+	ldh [hDivisor], a
+	ld hl, wEnemyMonMaxHP
+	ld a, [hli]
+	ldh [hDividend], a
+	ld a, [hl]
+	ldh [hDividend + 1], a
+	ld b, 2
+	call Divide
+	ldh a, [hQuotient + 3]
+	ld c, a
+	ldh a, [hQuotient + 2]
+	ld b, a
+	ld hl, wEnemyMonHP + 1
+	ld a, [hld]
+	ld e, a
+	ld a, [hl]
+	ld d, a
+	ld a, d
+	sub b
+	ret nz
+	ld a, e
+	sub c
+	ret
+
+AIUseXAttack:
+	ld b, $A
+	ld a, X_ATTACK
+	jr AIIncreaseStat
+
+AIUseXDefend:
+	ld b, $B
+	ld a, X_DEFEND
+	jr AIIncreaseStat
+
+AIUseXSpeed:
+	ld b, $C
+	ld a, X_SPEED
+	jr AIIncreaseStat
+
+AIUseXSpecial:
+	ld b, $D
+	ld a, X_SPECIAL
+	; fallthrough
+
+AIIncreaseStat:
+	ld [wAIItem], a
+	push bc
+	call AIPrintItemUse_
+	pop bc
+	ld hl, wEnemyMoveEffect
+	ld a, [hld]
+	push af
+	ld a, [hl]
+	push af
+	push hl
+	ld a, XSTATITEM_DUPLICATE_ANIM
+	ld [hli], a
+	ld [hl], b
+	callfar StatModifierUpEffect
+	pop hl
+	pop af
+	ld [hli], a
+	pop af
+	ld [hl], a
+	jp DecrementAICount
+
+AIPrintItemUse:
+	ld [wAIItem], a
+	call AIPrintItemUse_
+	jp DecrementAICount
+
+AIPrintItemUse_:
+; print "x used [wAIItem] on z!"
+	ld a, [wAIItem]
+	ld [wd11e], a
+	call GetItemName
+	ld hl, AIBattleUseItemText
+	jp PrintText
+
+AIBattleUseItemText:
+	text_far _AIBattleUseItemText
+	text_end
