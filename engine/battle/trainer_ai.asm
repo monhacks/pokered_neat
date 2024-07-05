@@ -6,11 +6,11 @@ PrepareState:
 
     ; Load type effectiveness, move type, and move power
     ld a, (wTypeEffectiveness)
-    ld (stateTypeEffectiveness), a
+    ld [stateTypeEffectiveness], a
     ld a, (wEnemyMoveType)
-    ld (stateMoveType), a
+    ld [stateMoveType], a
     ld a, (wEnemyMovePower)
-    ld (stateMovePower), a
+    ld [stateMovePower], a
 
     ; Load available moves and their properties
     ld hl, wEnemyMonMoves
@@ -20,7 +20,7 @@ PrepareState:
 
     ; Load status conditions
     ld a, (wBattleMonStatus)
-    ld (stateStatus), a
+    ld [stateStatus], a
 
     ret
 
