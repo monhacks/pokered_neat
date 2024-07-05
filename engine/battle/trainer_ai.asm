@@ -1,7 +1,7 @@
 ; Simplified AI Learning System
 
 ; Define a small memory area for storing learned data
-SECTION "AI Learning Data", WRAM0
+SECTION "AI Learning Data", ROMX
 wAILearningData: ds 16 ; 16 bytes of learning data
 
 ; New routine to prepare AI learning data
