@@ -266,6 +266,20 @@ AIEnemyTrainerChooseMoves:
 
     ret
 
+CopyData:
+    ld a, (bc)
+    cp NUM_MOVES * MOVE_LENGTH
+    jr nc, CopyData_End ; Exit if bc exceeds bounds
+    ld (hl), (de)
+    inc hl
+    inc de
+    dec bc
+    ld a, b
+    or c
+    jr nz, CopyData
+CopyData_End:
+    ret
+
 
 INCLUDE "data/trainers/move_choices.asm"
 INCLUDE "data/trainers/pic_pointers_money.asm"
